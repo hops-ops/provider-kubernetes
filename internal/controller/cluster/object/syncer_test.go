@@ -41,6 +41,13 @@ func TestNeedSSAFieldManagerUpgrade(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "TopLevelDataUpdateTriggersUpgrade",
+			fields: []metav1.ManagedFieldsEntry{
+				managedFieldsEntry(legacyManager, "", `{"f:data":{"f:key":{}}}`),
+			},
+			want: true,
+		},
+		{
 			name: "NonLegacyManagerIsIgnored",
 			fields: []metav1.ManagedFieldsEntry{
 				managedFieldsEntry("other-manager", "", `{"f:spec":{"f:credentials":{}}}`),
