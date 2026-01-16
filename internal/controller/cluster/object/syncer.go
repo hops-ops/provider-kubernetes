@@ -141,18 +141,41 @@ func (s *SSAResourceSyncer) SyncResource(ctx context.Context, obj *v1alpha2.Obje
 }
 
 // needSSAFieldManagerUpgrade checks the given k8s resource has legacy CSA field
-// managers in the managed field entries.
+// managers in the managed field entries that own spec fields.
 func (s *SSAResourceSyncer) needSSAFieldManagerUpgrade(accessor metav1.Object) bool {
 	if accessor == nil {
 		return false
 	}
 	mfes := accessor.GetManagedFields()
 	for _, mfe := range mfes {
-		if mfe.Operation == metav1.ManagedFieldsOperationUpdate && s.legacyCSAFieldManagers.Has(mfe.Manager) {
+		if mfe.Operation == metav1.ManagedFieldsOperationUpdate &&
+			s.legacyCSAFieldManagers.Has(mfe.Manager) &&
+			hasSpecFields(mfe) {
 			return true
 		}
 	}
 	return false
+}
+
+// hasSpecFields checks if the managed field entry owns any spec fields.
+// Returns true if the entry has f:spec in its fieldsV1, indicating the manager
+// was managing the resource's spec via CSA and needs migration.
+// Returns false if the entry only manages metadata fields (like finalizers).
+func hasSpecFields(mfe metav1.ManagedFieldsEntry) bool {
+	if mfe.FieldsV1 == nil || len(mfe.FieldsV1.Raw) == 0 {
+		return false
+	}
+
+	// Parse the FieldsV1 JSON to check for f:spec key
+	var fields map[string]interface{}
+	if err := json.Unmarshal(mfe.FieldsV1.Raw, &fields); err != nil {
+		// If we can't parse, be conservative and assume it might have spec fields
+		return true
+	}
+
+	// Check if f:spec exists at the top level
+	_, hasSpec := fields["f:spec"]
+	return hasSpec
 }
 
 // maybeUpgradeFieldManagers upgrades managed field entries of the managed k8s resource
