@@ -120,6 +120,23 @@ func TestNeedSSAFieldManagerUpgrade(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "legacy manager with data fields (spec-less) - needs migration",
+			accessor: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"managedFields": []interface{}{
+							map[string]interface{}{
+								"manager":   "crossplane-kubernetes-provider",
+								"operation": "Update",
+								"fieldsV1":  map[string]interface{}{"f:data": map[string]interface{}{"f:key": map[string]interface{}{}}},
+							},
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
 			name: "legacy manager with only metadata fields - no migration",
 			accessor: &unstructured.Unstructured{
 				Object: map[string]interface{}{
